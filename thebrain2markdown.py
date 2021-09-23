@@ -28,6 +28,7 @@ SUBDIRECTORY = 10
 SAVEDREPORT = 11
 MARKDOWNIMAGE = 12
 
+print("reading links")
 links_json = {}
 for line in codecs.open(links_path, "r", "utf-8-sig"):
     link = json.loads(line)
@@ -41,11 +42,13 @@ for line in codecs.open(links_path, "r", "utf-8-sig"):
         item = {}
         item["Link"] = link["ThoughtIdB"]
         item["Relation"] = link["Relation"]
+        item["LinkId"] = link["Id"]
 
         links_json[node_id].append(item)
 
 # print(links_json)
 
+print("reading attachments")
 attachments_json = {}
 for line in codecs.open(attachments_path, "r", "utf-8-sig"):
     attachment = json.loads(line)
@@ -61,6 +64,7 @@ for line in codecs.open(attachments_path, "r", "utf-8-sig"):
 
     attachments_json[node_id].append(item)
 
+print("reading thoughts")
 nodes_json = {}
 for line in codecs.open(thoughts_path, "r", "utf-8-sig"):
     node = json.loads(line)
@@ -69,11 +73,38 @@ for line in codecs.open(thoughts_path, "r", "utf-8-sig"):
     nodes_json[node_id]["Name"] = node.get("Name")
     nodes_json[node_id]["CreationDateTime"] = node.get("CreationDateTime")
     nodes_json[node_id]["Kind"] = node.get("Kind")
+    if "TypeId" in node:
+        nodes_json[node_id]["TypeId"] = node.get("TypeId")
 
+filename = "./delNotes.bat"
+del_file = open(filename, "w", encoding="utf-8")
+
+
+print("processing")
 for key, value in nodes_json.items():
     node_id = key
     try:
         for link in links_json[node_id]:
+            text = ""
+            link_id = link["LinkId"]
+            if link_id in attachments_json:
+                for attachment in attachments_json[link_id]:
+                    if attachment["Location"] == "notes.html":
+                        notesv9 = "./export/" + link_id + "/Notes/" + attachment["Location"]
+                        del_file.write("del obsidian\\attachments\\" + link_id + "\\Notes\\" + attachment["Location"]+"\n")
+                        text = []
+                        for line in io.open(notesv9, encoding="utf-8-sig"):
+                            text.append(line)
+
+                        text = "".join(text)
+                        text = html2markdown.convert(text)
+                        try:
+                            nodes_json[node_id]["LinkNote"].append("## [["+nodes_json[link["Link"]]["Name"].replace("/", "-")+"]]\n"+text)
+                        except KeyError:
+                            nodes_json[node_id]["LinkNote"] = []
+                            nodes_json[node_id]["LinkNote"].append("## [["+nodes_json[link["Link"]]["Name"].replace("/", "-")+"]]\n"+text)
+
+
             if link["Relation"] == CHILD:
                 try:
                     nodes_json[node_id]["Children"].append(nodes_json[link["Link"]]["Name"])
@@ -104,27 +135,33 @@ for key, value in nodes_json.items():
     try:
         for attachment in attachments_json[node_id]:
             if attachment["Type"] == INTERNALFILE:
-                internal_file = "./export/" + node_id + "/" + attachment["Location"]
-                text = []
-                try:
-                    for line in io.open(internal_file):
-                        text.append(line)
-                except UnicodeDecodeError:
-                    text = ""
-
-                text = "".join(text)
-                text = html2markdown.convert(text)
-
-                try:
-                    nodes_json[node_id]["InternalFile"].append(text)
-                except KeyError:
-                    nodes_json[node_id]["InternalFile"] = []
-                    nodes_json[node_id]["InternalFile"].append(text)
+                if attachment["Location"] == "Notes.md":
+                    del_file.write("del obsidian\\attachments\\" + node_id + "\\" + attachment["Location"]+"\n")
+                    text = []
+                    try:
+                        for line in io.open("./export/" + node_id + "/" + attachment["Location"],encoding="utf-8-sig"):
+                            text.append(line)
+                    except UnicodeDecodeError:
+                        text = ""
+                    text = "".join(text)
+                    try:
+                        nodes_json[node_id]["Notes"].append(text)
+                    except KeyError:
+                        nodes_json[node_id]["Notes"] = []
+                        nodes_json[node_id]["Notes"].append(text)
+                else:
+                    internal_file = "[[./attachments/" + node_id + "/" + attachment["Location"]+"]]"
+                    try:
+                        nodes_json[node_id]["InternalFile"].append(internal_file)
+                    except KeyError:
+                        nodes_json[node_id]["InternalFile"] = []
+                        nodes_json[node_id]["InternalFile"].append(internal_file)
 
             if attachment["Type"] == NOTESV9:
                 notesv9 = "./export/" + node_id + "/Notes/" + attachment["Location"]
+                del_file.write("del obsidian\\attachments\\" + node_id + "\\Notes\\" + attachment["Location"]+"\n")
                 text = []
-                for line in io.open(notesv9):
+                for line in io.open(notesv9, encoding="utf-8-sig"):
                     text.append(line)
 
                 text = "".join(text)
@@ -157,47 +194,60 @@ for key, value in nodes_json.items():
     except KeyError:
         pass
 
-
+print("processing 2")
 for _, value in nodes_json.items():
     contents = []
     name = value["Name"].replace("/", "-")
     filename = "./obsidian/" + name + ".md"
-    text_file = open(filename, "w")
-    if "InternalFile" in value:
-        for attachment in value["InternalFile"]:
-            attachment = attachment.replace(":{", "")
-            attachment = attachment.replace(":}", "")
-            text_file.write("\n" + attachment)
+    text_file = open(filename, "w", encoding="utf-8")
+    text_file.write("---\n\ntags: TheBrainImport\n\n---\n")
+    if "TypeId" in value:
+        text_file.write("#"+nodes_json[value["TypeId"]]["Name"].replace(" ","_")+"\n")
     if "Notes" in value:
+        text_file.write("\n# Notes\n")
         for attachment in value["Notes"]:
             attachment = attachment.replace(":{", "")
             attachment = attachment.replace(":}", "")
             text_file.write("\n" + attachment)
+
+    if "InternalFile" in value:
+        text_file.write("\n# Internal Files\n")
+        for attachment in value["InternalFile"]:
+            attachment = attachment.replace(":{", "")
+            attachment = attachment.replace(":}", "")
+            text_file.write("\n" + attachment)
+    
     if "ExternalFile" in value:
+        text_file.write("\n\n# External files\n")
         for attachment in value["ExternalFile"]:
             text_file.write("\nAttachment: [[" + attachment + "]]")
     if "ExternalURL" in value:
+        text_file.write("\n\n# External URLs\n")
         for attachment in value["ExternalURL"]:
             text_file.write("\nExternal URL: " + attachment)
     if "Image" in value:
+        text_file.write("\n\n# Images\n")
         for attachment in value["Image"]:
             text_file.write("\n![[" + attachment + "]]")
     if "Children" in value or "Parents" in value or "Jumps" in value:
-        text_file.write("\n\n")
+        text_file.write("\n\n# Links \n")
     if "Children" in value:
-        text_file.write("\nChildren: ")
+        text_file.write("\nChildren:: ")
         text = ", ".join([str("[[" + item + "]]") for item in value["Children"]])
         text = text.replace("/", "-")
         text_file.write(text)
     if "Parents" in value:
-        text_file.write("\nParents: ")
+        text_file.write("\nParents:: ")
         text = ", ".join([str("[[" + item + "]]") for item in value["Parents"]])
         text = text.replace("/", "-")
         text_file.write(text)
     if "Jumps" in value:
-        text_file.write("\nJumps: ")
+        text_file.write("\nJumps:: ")
         text = ", ".join([str("[[" + item + "]]") for item in value["Jumps"]])
         text = text.replace("/", "-")
         text_file.write(text)
+    if "LinkNote" in value:
+        text_file.write("\n\n"+"\n\n".join([str(item) for item in value["LinkNote"]]))
 
     text_file.close()
+    del_file.close()
