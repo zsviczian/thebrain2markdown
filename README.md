@@ -1,3 +1,13 @@
+Extended Sander's script with couple of features:
+- Adds thought type as a tag
+- Processes Notes.md files
+- Adds link notes to ThoughtA's document
+- Outputs "delNotes.bat" to delete the notes.html and Notes.md files that were converted
+- On Windows I used method 3 as described here to delete empty attachment folders: https://windowsreport.com/remove-empty-folders-windows-10/
+- Depending on the characters you've used in thought names, you may need to clean up forbidden characters in the thoughts.json file (like ?:>| etc...). 
+
+------------
+
 # thebrain2markdown
 Convert exports from TheBrain to Markdown
 
