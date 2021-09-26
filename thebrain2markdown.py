@@ -28,6 +28,9 @@ SUBDIRECTORY = 10
 SAVEDREPORT = 11
 MARKDOWNIMAGE = 12
 
+def replaceChar(instr):
+    return instr.replace("\\","-").replace("/","-").replace("*","⭐").replace("?","❓").replace("\"","'").replace("<","◀").replace(">","▶").replace(":","_").replace("|","_")
+
 print("reading links")
 links_json = {}
 for line in codecs.open(links_path, "r", "utf-8-sig"):
@@ -99,10 +102,10 @@ for key, value in nodes_json.items():
                         text = "".join(text)
                         text = html2markdown.convert(text)
                         try:
-                            nodes_json[node_id]["LinkNote"].append("## [["+nodes_json[link["Link"]]["Name"].replace("/", "-")+"]]\n"+text)
+                            nodes_json[node_id]["LinkNote"].append("## [["+replaceChar(nodes_json[link["Link"]]["Name"])+"]]\n"+text)
                         except KeyError:
                             nodes_json[node_id]["LinkNote"] = []
-                            nodes_json[node_id]["LinkNote"].append("## [["+nodes_json[link["Link"]]["Name"].replace("/", "-")+"]]\n"+text)
+                            nodes_json[node_id]["LinkNote"].append("## [["+replaceChar(nodes_json[link["Link"]]["Name"])+"]]\n"+text)
 
 
             if link["Relation"] == CHILD:
@@ -197,7 +200,7 @@ for key, value in nodes_json.items():
 print("processing 2")
 for _, value in nodes_json.items():
     contents = []
-    name = value["Name"].replace("/", "-")
+    name = replaceChar(value["Name"])
     filename = "./obsidian/" + name + ".md"
     text_file = open(filename, "w", encoding="utf-8")
     text_file.write("---\n\ntags: TheBrainImport\n\n---\n")
@@ -234,17 +237,17 @@ for _, value in nodes_json.items():
     if "Children" in value:
         text_file.write("\nChildren:: ")
         text = ", ".join([str("[[" + item + "]]") for item in value["Children"]])
-        text = text.replace("/", "-")
+        text = replaceChar(text)
         text_file.write(text)
     if "Parents" in value:
         text_file.write("\nParents:: ")
         text = ", ".join([str("[[" + item + "]]") for item in value["Parents"]])
-        text = text.replace("/", "-")
+        text = replaceChar(text)
         text_file.write(text)
     if "Jumps" in value:
         text_file.write("\nJumps:: ")
         text = ", ".join([str("[[" + item + "]]") for item in value["Jumps"]])
-        text = text.replace("/", "-")
+        text = replaceChar(text)
         text_file.write(text)
     if "LinkNote" in value:
         text_file.write("\n\n"+"\n\n".join([str(item) for item in value["LinkNote"]]))
