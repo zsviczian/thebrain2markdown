@@ -6,6 +6,10 @@ Extended Sander's script with couple of features:
 - On Windows I used method 3 as described here to delete empty attachment folders: https://windowsreport.com/remove-empty-folders-windows-10/
 - Depending on the characters you've used in thought names, you may need to clean up forbidden characters in the thoughts.json file (like ?:>| etc...). 
 
+
+ToDo:
+- convert thought icons from the .data folder.
+
 ------------
 
 # thebrain2markdown
